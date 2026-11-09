@@ -1,4 +1,4 @@
-"""AI 웹검색으로 국내 판매가를 찾는 실험용 스크립트 (9주차, 담당 C).
+"""AI 웹검색으로 국내 판매가를 찾는 실험용 스크립트 (9주차, 담당 강민지).
 
 사용법:
     pip install google-genai python-dotenv
