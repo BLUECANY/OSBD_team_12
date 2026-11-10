@@ -1,3 +1,4 @@
+import sys
 from paddleocr import PaddleOCR
 
 ocr = PaddleOCR(
@@ -8,11 +9,13 @@ ocr = PaddleOCR(
     use_textline_orientation=False,
 )
 
-results = ocr.predict("samples/general_ocr_002.png")
 
-for result in results:
+input_path = sys.argv[1] if len(sys.argv) > 1 else "samples/general_ocr_002.png"
+output_dir = sys.argv[2] if len(sys.argv) > 2 else "results/ocr_demo"
+
+for result in ocr.predict(input_path):
     result.print()
-    result.save_to_img("results/ocr_demo")
-    result.save_to_json("results/ocr_demo")
+    result.save_to_img(output_dir)
+    result.save_to_json(output_dir)
 
-print("완료 : results/ocr_demo 폴더를 확인하세요.")
+print(f"완료: {output_dir}")
