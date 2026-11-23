@@ -82,10 +82,10 @@ streamlit run app/main.py
 
 | 담당 | 이름 | GitHub | 역할 |
 |---|---|---|---|
-| A | | | 인식(OCR) — `ocr` |
-| B | | | 가격·판단 — `price`, `judge` |
-| C | | | 검색·매칭 — `search` |
-| D | | | 통합·인프라 — `app`, 저장소 관리 |
+| A | 채지원 | cojiwon | 인식(OCR) — `ocr` |
+| B | 성영진 | hojin1169-web | 가격·판단 — `price`, `judge` |
+| C | 강민지 | 강민지 | 검색·매칭 — `search` |
+| D | 최현호 | choihh38 | 통합·인프라 — `app`, 저장소 관리 |
 
 ## 라이선스
 
