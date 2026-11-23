@@ -1,0 +1,17 @@
+# 화면
+streamlit
+
+# OCR (ocr 모듈) - OpenCV는 paddleocr 설치 시 함께 설치됩니다
+paddlepaddle
+paddleocr
+
+# 상품명 유사도 비교 (search / judge 모듈)
+rapidfuzz
+
+# API 호출, 환경변수
+requests
+python-dotenv
+
+# 데이터 정리, 그래프 (13주차 검증)
+pandas
+matplotlib
