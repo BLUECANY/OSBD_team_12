@@ -1,6 +1,9 @@
 .venv312/
 __pycache__/
 .env
+.env
+venv/
+__pycache__/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -236,3 +239,4 @@ __marimo__/
 # 로그, 임시 결과물
 *.log
 output/
+.search_cache/
