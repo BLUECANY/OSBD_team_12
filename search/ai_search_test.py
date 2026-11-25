@@ -1,55 +1,179 @@
-"""AI 웹검색으로 국내 판매가를 찾는 실험용 스크립트 (9주차, 담당 강민지).
-
-사용법:
-    pip install google-genai python-dotenv
-    python search/ai_search_test.py "상품 검색어"
 """
-import json
+Gemini 상품 분류 모듈
+
+역할:
+    동일 상품(same) / 유사 상품(alternative) 분류
+
+사용:
+    from ai_search_test import classify_products
+"""
+
 import os
+import json
 import re
-import sys
-import time
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-load_dotenv()  # .env 파일에서 키를 읽는다 (코드에 키를 직접 쓰지 않는다)
+load_dotenv()
 
-PROMPT = """한국 온라인 쇼핑몰에서 아래 상품의 국내 판매가를 찾아줘.
-상품: {name}
-
-반드시 아래 JSON 배열만 출력해줘. 설명 문장은 쓰지 마.
-각 항목: {{"name": 상품명, "price": 숫자(원, 쉼표 없이), "link": 실제 상품 페이지 주소, "source": 쇼핑몰 이름}}
-같은 상품 최대 3개, 비슷한 대체상품 최대 2개를 찾고, 항목마다 "type" 에 "same" 또는 "alternative"를 적어줘.
-찾을 수 없으면 빈 배열 []을 출력해줘. 가격이나 링크를 지어내지 마."""
+MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-flash-latest"
+)
 
 
-def search_products(name: str) -> list[dict]:
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    response = client.models.generate_content(
-        model=os.environ.get("GEMINI_MODEL", "gemini-flash-latest"),
-        contents=PROMPT.format(name=name),
-        config=types.GenerateContentConfig(
-            tools=[types.Tool(google_search=types.GoogleSearch())]
-        ),
-    )
-    text = response.text or ""
-    match = re.search(r"\[.*\]", text, re.DOTALL)  # 응답에서 JSON 배열 부분만 꺼낸다
-    if not match:
-        print("JSON을 찾지 못했습니다. 원본 응답:\n", text)
+def classify_products(keyword, products):
+
+    if not products:
         return []
+
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        print("[Gemini] API 키가 없어 분류를 건너뜁니다.")
+
+        return [
+            {**item, "type": "unknown"}
+            for item in products
+        ]
+
+    # Gemini에게 전달할 정보
+    # URL은 전달하지 않는다.
+    product_data = []
+
+    for i, item in enumerate(products):
+
+        product_data.append({
+            "index": i,
+            "name": item["name"],
+            "price": item["price"],
+            "source": item["source"]
+        })
+
+    prompt = f"""
+다음은 사용자가 검색한 상품과 검색 결과 목록이다.
+
+검색어: {keyword}
+
+상품 목록:
+{json.dumps(product_data, ensure_ascii=False)}
+
+각 상품을 다음 두 가지로 분류해.
+
+1. same:
+   검색어와 동일한 상품 또는 동일한 모델의 상품
+
+2. alternative:
+   검색어와 비슷한 기능이나 용도를 가진 대체 상품
+
+반드시 다음 JSON 형식만 출력해.
+
+{{
+    "classifications": [
+        {{"index": 0, "type": "same"}},
+        {{"index": 1, "type": "alternative"}}
+    ]
+}}
+
+주의:
+- 모든 상품의 index를 빠짐없이 분류해.
+- index는 입력된 상품 목록의 번호를 그대로 사용해.
+- 상품명이나 가격을 수정하지 마.
+- same과 alternative 이외의 유형은 사용하지 마.
+"""
+
     try:
-        return json.loads(match.group(0))
-    except json.JSONDecodeError:
-        print("JSON 해석 실패. 원본 응답:\n", text)
-        return []
+
+        client = genai.Client(api_key=api_key)
+
+        response = client.models.generate_content(
+            model=MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+
+        raw = response.text or ""
+
+        match = re.search(r"\{.*\}", raw, re.S)
+
+        if not match:
+            raise ValueError("Gemini JSON 응답을 찾지 못했습니다.")
+
+        data = json.loads(match.group(0))
+
+        classifications = data.get(
+            "classifications", []
+        )
+
+        # 분류 결과를 원본 상품에 적용
+        type_map = {}
+
+        for item in classifications:
+
+            index = item.get("index")
+            category = item.get("type")
+
+            if (
+                isinstance(index, int)
+                and 0 <= index < len(products)
+                and category in ("same", "alternative")
+            ):
+                type_map[index] = category
+
+        result = []
+
+        for i, product in enumerate(products):
+
+            result.append({
+                **product,
+                "type": type_map.get(i, "unknown")
+            })
+
+        return result
+
+    except Exception as e:
+
+        print(f"[Gemini] 분류 오류: {e}")
+
+        return [
+            {**item, "type": "unknown"}
+            for item in products
+        ]
 
 
 if __name__ == "__main__":
-    query = sys.argv[1] if len(sys.argv) > 1 else "로지텍 MX Master 3S"
-    start = time.time()
-    items = search_products(query)
-    elapsed = time.time() - start
-    print(json.dumps(items, ensure_ascii=False, indent=2))
-    print(f"\n소요 시간: {elapsed:.1f}초 / 결과 {len(items)}건")
+
+    import sys
+
+    try:
+        from .search_products import search_products
+    except ImportError:
+        from search_products import search_products
+
+    keyword = " ".join(sys.argv[1:]) or "무선 키보드"
+
+    # 검색 API로 상품 검색
+    products = search_products(
+        keyword,
+        classify=False
+    )
+
+    # Gemini로 상품 분류
+    results = classify_products(
+        keyword,
+        products
+    )
+
+    print("\n===== 상품 검색 결과 =====")
+
+    for i, item in enumerate(results, 1):
+
+        print(f"\n{i}. {item['name']}")
+        print(f"가격: {item['price']:,}원")
+        print(f"판매처: {item['source']}")
+        print(f"분류: {item['type']}")
+        print(f"링크: {item['link']}")
