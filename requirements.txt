@@ -1,0 +1,22 @@
+# Python 3.10 ~ 3.12 기준
+
+# 화면 (app)
+streamlit
+
+# OCR (ocr) - OpenCV는 paddleocr 설치 시 함께 설치됩니다
+paddlepaddle
+paddleocr
+
+# 상품명 보정·유사도 비교 (search)
+rapidfuzz
+
+# API 호출, 환경변수 (price, search)
+requests
+python-dotenv
+
+# 테스트 (price, judge)
+pytest
+
+# 검증 자료 정리, 그래프 (13주차)
+pandas
+matplotlib
